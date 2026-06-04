@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Программный модуль: Генератор и Анализатор</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #111827;
+            color: #e5e7eb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container-box {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        .author-box {
+            border-top: 4px solid #10b981;
+            background: #111827;
+        }
+        input[type="range"] {
+            accent-color: #10b981;
+        }
+        input[type="checkbox"] {
+            accent-color: #10b981;
+        }
+    </style>
+</head>
+<body class="py-10 px-4">
+    <div class="max-w-3xl mx-auto">
+        
+        <!-- Заголовок и Автор -->
+        <div class="container-box author-box p-6 mb-8">
+            <h1 class="text-2xl font-bold text-white mb-2 text-center uppercase tracking-wide">
+                Программный модуль генерации и анализа паролей
+            </h1>
+            <div class="text-center text-emerald-400 font-medium">
+                Автор: Федцов Григорий Олегович<br>
+                Группа: ИСС9-125
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Настройки -->
+            <div class="container-box p-6">
+                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2 text-emerald-500">Параметры системы</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-1 text-gray-400">Длина пароля (L): <span id="lenLabel" class="font-bold text-white">16</span></label>
+                        <input type="range" id="length" min="6" max="64" value="16" class="w-full">
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-emerald-400 transition">
+                            <input type="checkbox" id="up" checked> Прописные (A-Z)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-emerald-400 transition">
+                            <input type="checkbox" id="low" checked> Строчные (a-z)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-emerald-400 transition">
+                            <input type="checkbox" id="num" checked> Цифры (0-9)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-emerald-400 transition">
+                            <input type="checkbox" id="sym" checked> Символы (!@#$)
+                        </label>
+                    </div>
+
+                    <button onclick="generate()" class="w-full bg-emerald-600 text-white py-2 rounded font-semibold hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/20">
+                        Сгенерировать вектор
+                    </button>
+                </div>
+            </div>
+
+            <!-- Результаты -->
+            <div class="container-box p-6">
+                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2 text-emerald-500">Результат анализа</h2>
+                
+                <div id="output" class="bg-gray-900 p-3 rounded font-mono text-center text-lg mb-4 break-all border border-emerald-900 text-emerald-400 italic">
+                    ********
+                </div>
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between border-b border-gray-700 py-1">
+                        <span class="text-gray-400">Мощность алфавита (S):</span>
+                        <span id="resS" class="font-bold text-white">0</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-700 py-1">
+                        <span class="text-gray-400">Энтропия (бит):</span>
+                        <span id="resH" class="font-bold text-emerald-400">0</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-700 py-1">
+                        <span class="text-gray-400">Стойкость:</span>
+                        <span id="resLvl" class="font-bold uppercase text-white">---</span>
+                    </div>
+                    <div class="flex justify-between py-1">
+                        <span class="text-gray-400">Время взлома:</span>
+                        <span id="resT" class="font-bold text-emerald-500">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-xs text-gray-500 uppercase tracking-widest">
+            Математическая модель проекта // Колледж Телекоммуникаций МТУСИ
+        </div>
+    </div>
+
+    <script>
+        const lenInp = document.getElementById('length');
+        const lenLab = document.getElementById('lenLabel');
+
+        lenInp.oninput = () => {
+            lenLab.innerText = lenInp.value;
+            generate();
+        };
+
+        function generate() {
+            const sets = {
+                u: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                l: "abcdefghijklmnopqrstuvwxyz",
+                n: "0123456789",
+                s: "!@#$%^&*()_+~-="
+            };
+
+            let chars = "";
+            let S = 0;
+            if (document.getElementById('up').checked) { chars += sets.u; S += 26; }
+            if (document.getElementById('low').checked) { chars += sets.l; S += 26; }
+            if (document.getElementById('num').checked) { chars += sets.n; S += 10; }
+            if (document.getElementById('sym').checked) { chars += sets.s; S += 15; }
+
+            if (!chars) return;
+
+            const L = parseInt(lenInp.value);
+            const bytes = new Uint32Array(L);
+            window.crypto.getRandomValues(bytes);
+
+            let pass = "";
+            for (let i = 0; i < L; i++) {
+                pass += chars[bytes[i] % chars.length];
+            }
+
+            document.getElementById('output').innerText = pass;
+            
+            // Расчеты
+            const H = L * Math.log2(S);
+            const N = BigInt(S) ** BigInt(L);
+            const speed = BigInt(10000000000); // 10 млрд оп/сек
+            const sec = N / speed;
+
+            document.getElementById('resS').innerText = S;
+            document.getElementById('resH').innerText = H.toFixed(2);
+            
+            let lvl = "Низкая";
+            let color = "#ef4444"; // red
+            if (H > 60) { lvl = "Средняя"; color = "#f59e0b"; } // amber
+            if (H > 80) { lvl = "Высокая"; color = "#10b981"; } // emerald
+            if (H > 100) { lvl = "Критическая"; color = "#34d399"; } // green
+            
+            const lvlEl = document.getElementById('resLvl');
+            lvlEl.innerText = lvl;
+            lvlEl.style.color = color;
+
+            let time = "";
+            const sNum = Number(sec);
+            if (sNum < 60) time = "~ секунд";
+            else if (sNum < 3600) time = "~ минут";
+            else if (sNum < 86400) time = "~ часов";
+            else if (sNum < 31536000) time = Math.floor(sNum / 86400) + " дн.";
+            else if (sNum < 31536000000) time = Math.floor(sNum / 31536000) + " лет";
+            else time = "Вечность";
+            
+            document.getElementById('resT').innerText = time;
+        }
+
+            // Инициализация при загрузке
+            window.onload = generate;
+    </script>
+</body>
+</html>
